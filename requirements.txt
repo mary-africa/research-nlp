@@ -1,0 +1,5 @@
+# core
+pytest==6.2.4
+
+# For research (to remove later)
+jupyterlab==3.0.16
