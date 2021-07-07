@@ -67,14 +67,18 @@ def yield_forEach(fn, skip_rule: Callable = None):
     _decorator.__name__ = "yield_forEach.{}".format(_decorator.__name__)
     return _decorator
 
-def forEach(fn, skip_rule: Callable = None):
+def forEach(fn, skip_rule: Callable = None, type_: Any = None):
     """forEach"""
     def _decorator(reader_fn):
         @wraps(reader_fn)
         def wrapper(*args, **kwargs):
             out = reader_fn(*args, **kwargs)
             assert isinstance(out, Iterable), "The output of fn '%s' is not iterable" % (reader_fn.__name__)
-            return list(map(partial(_skipper_exec, executor=fn, skip_rule=skip_rule), out))
+            iter_ = map(partial(_skipper_exec, executor=fn, skip_rule=skip_rule), out)
+            if type_ is None:
+                return list(iter_)
+            
+            return type_(iter_)
         return wrapper
 
     _decorator.__name__ = "forEach.{}".format(_decorator.__name__)
@@ -101,13 +105,17 @@ def rules(*fns: List[Callable]):
         return select        
     return selector
 
-def filterBy(filter_rule: Callable):
+def filterBy(filter_rule: Callable, type_: Any = None):
     """"""
     def filter_decorator(outptter_fn):
         @wraps(outptter_fn)
         def wrapper(*args, **kwargs):
             out = outptter_fn(*args, **kwargs)
             assert isinstance(out, Iterable), "The output of fn '%s' is not iterable" % (outptter_fn.__name__)
-            return filter(filter_rule, out)
+            iter_  = filter(filter_rule, out)
+            if type_ is None:
+                return list(iter_)
+            
+            return type_(iter_)
         return wrapper
     return filter_decorator
