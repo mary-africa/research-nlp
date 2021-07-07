@@ -91,7 +91,7 @@ class Rules:
     AND = 'and'
     OR = 'or'
 
-def rules(*fns: List[Callable], op_ = Rules.AND):    
+def rules(*fns: List[Callable], op_: str = Rules.AND):    
     """This is useful if the `fns` are 'selectors'"""
     def andSelector(input_: Any):
         """Selectors
