@@ -2,16 +2,18 @@ from collections.abc import Iterable, Callable
 from functools import wraps, partial
 from typing import List, Any, Optional
 
-# ----------------------------------------
-# for formatting the items
-# ----------------------------------------
-
 def _skipper_exec(out, executor: Callable, skip_rule: Optional[Callable] = None):
     """Skips execution depending on the rule"""
     if skip_rule is not None:
         if skip_rule(out):
             return out
     return executor(out)
+
+
+# ----------------------------------------
+# for formatting the items
+# ----------------------------------------
+
 
 def calls(*fns: List[Callable]):    
     """calls"""
@@ -25,6 +27,7 @@ def calls(*fns: List[Callable]):
         return input_        
     return executor
 
+
 def flowBy(generator):
     """Build the list"""
     def _decorator(iterator_fn):
@@ -34,6 +37,8 @@ def flowBy(generator):
                 for o_ in generator(iter_):
                     yield o_
         return wrapper
+    
+    _decorator.__name__ = "flowBy.{}".format(_decorator.__name__)
     return _decorator
 
 def apply(format_fn, skip_rule: Callable = None):
@@ -44,6 +49,8 @@ def apply(format_fn, skip_rule: Callable = None):
             out = reader_fn(*args, **kwargs)
             return _skipper_exec(out, format_fn, skip_rule=skip_rule)
         return wrapper
+
+    _decorator.__name__ = "apply.{}".format(_decorator.__name__)
     return _decorator
 
 def yield_forEach(fn, skip_rule: Callable = None):
@@ -56,6 +63,8 @@ def yield_forEach(fn, skip_rule: Callable = None):
             for o in out:
                 yield _skipper_exec(o, fn, skip_rule=skip_rule)
         return wrapper
+
+    _decorator.__name__ = "yield_forEach.{}".format(_decorator.__name__)
     return _decorator
 
 def forEach(fn, skip_rule: Callable = None):
@@ -67,6 +76,8 @@ def forEach(fn, skip_rule: Callable = None):
             assert isinstance(out, Iterable), "The output of fn '%s' is not iterable" % (reader_fn.__name__)
             return list(map(partial(_skipper_exec, executor=fn, skip_rule=skip_rule), out))
         return wrapper
+
+    _decorator.__name__ = "forEach.{}".format(_decorator.__name__)
     return _decorator
 
 # ------------------------------------------
