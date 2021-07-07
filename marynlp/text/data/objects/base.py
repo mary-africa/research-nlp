@@ -52,11 +52,14 @@ class mask_token(object):
     def extra_repr(self):
         return self.label
 
+    def __str__(self):
+        return "<{}>".format(self.extra_repr())
+
     def __repr__(self):
         return "<{}>".format(self.extra_repr())
 
     def __hash__(self):
-        return hash("<{}>".format(str(self)))
+        return hash("<{}>".format(str.label))
     
 
 class compoundToken(object):
