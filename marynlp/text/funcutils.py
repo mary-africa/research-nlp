@@ -91,60 +91,44 @@ class Rules:
     AND = 'and'
     OR = 'or'
 
-def rules(*fns: List[Callable], op_: str = Rules.AND):    
-    """This is useful if the `fns` are 'selectors'"""
-    def andSelector(input_: Any):
-        """Selectors
-        Returns:
-            True, if the selector is are all true. False if otherwise
-        """
-        select: bool = True        
-        for fn in fns:
-            assert isinstance(fn, Callable), "Fn '%s' is not callable" % (fn.__name__)
-            if select: 
-                select = select and fn(input_)
-            else:
-                break
-        return select    
 
-    def orSelector(input_: Any):
-        """Selectors
-        Returns:
-            True, if the selector is are all true. False if otherwise
-        """
-        select: bool = False        
-        for fn in fns:
-            assert isinstance(fn, Callable), "Fn '%s' is not callable" % (fn.__name__)
-            if select: 
-                select = select or fn(input_)
-            else:
-                break
-        return select    
+def _andSelector(input_: Any, fns=List[Callable]):
+    """Selectors
+    Returns:
+        True, if the selector is are all true. False if otherwise
+    """
+    select: bool = True        
+    for fn in fns:
+        assert isinstance(fn, Callable), "Fn '%s' is not callable" % (fn.__name__)
+        if select: 
+            select = select and fn(input_)
+        else:
+            break
+    return select    
+
+def _orSelector(input_: Any, fns=List[Callable]):
+    """Selectors
+    Returns:
+        True, if the selector is are all true. False if otherwise
+    """
+    select: bool = False 
+    for fn in fns:
+        assert isinstance(fn, Callable), "Fn '%s' is not callable" % (fn.__name__)
+        if select: 
+            select = select or fn(input_)
+        else:
+            break
+    return select 
+
+def rules(*fns: List[Callable], op_: str = Rules.AND):    
+    """This is useful if the `fns` are 'selectors'"""   
         
     if op_ is None or op_ is Rules.AND:    
-        return andSelector
+        return partial(_andSelector, fns=fns)
     elif op_ is Rules.OR:
-        return orSelector
+        return partial(_orSelector, fns=fns)
     else:
         assert False, "Operation execution required is either `%s` or `%s`" % (Rules.AND, Rules.OR)
-
-    
-def rules(*fns: List[Callable]):    
-    """This is useful if the `fns` are 'selectors'"""
-    def selector(input_: Any):
-        """Selectors
-        Returns:
-            True, if the selector is are all true. False if otherwise
-        """
-        select: bool = True        
-        for fn in fns:
-            assert isinstance(fn, Callable), "Fn '%s' is not callable" % (fn.__name__)
-            if select: 
-                select = select and fn(input_)
-            else:
-                break
-        return select        
-    return selector
 
 def filterBy(filter_rule: Callable, type_: Any = None):
     """"""
