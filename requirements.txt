@@ -1,5 +1,6 @@
 # core
 pytest==6.2.4
+mock==4.0.3
 
 # For research (to remove later)
 jupyterlab==3.0.16
