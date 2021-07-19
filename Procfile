@@ -1,0 +1,1 @@
+web: streamlit app streamlit_sed.py

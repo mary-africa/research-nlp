@@ -33,7 +33,7 @@ class ModelsConfig():
 
     lm_weight_path = './sed/embeddings/small-embeddings.pth'
     lm_embed_path = './sed/embeddings/small-embeddings.txt.npy'
-    lm_model_path = './sed/models/6.9453_lm.pth'
+    lm_model_path = './sed/models/6.9101_lm.pth'
     
     # Configurations
     # model_params = dict(
