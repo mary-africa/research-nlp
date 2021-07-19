@@ -2,7 +2,7 @@
 # coding: utf-8
 import numpy as np
 
-from text.utils.morphology import MorphologyAnalyzer
+from ..utils.morphology import MorphologyAnalyzer
 
 class LabelEncoder:
     def __init__(self, items: list, sort_items = False, oov:list=None, encode_unk=True):

@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from text.data.preprocessing import LabelEncoder, MorphemeEncoder
-from text.data.structures import Document
+from .preprocessing import LabelEncoder, MorphemeEncoder
+from .structures import Document
 from tqdm.notebook import tqdm
 
 from typing import List

@@ -6,13 +6,13 @@ from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from torch.nn.utils.rnn import pad_packed_sequence
 
-from text.networks.highway import Highway
-from text.networks.embeddings import Embeddings
-from text.networks.embeddings import WordEmbeddings
+from ..networks.highway import Highway
+from ..networks.embeddings import Embeddings
+from ..networks.embeddings import WordEmbeddings
 
-from text.data.vocab import Vocab
-from text.data.datasets import WordEmbeddingDataset 
-from text.utils.config import EmbeddingsConfig, ModelsConfig
+from ..data.vocab import Vocab
+from ..data.datasets import WordEmbeddingDataset 
+from ..utils.config import EmbeddingsConfig, ModelsConfig
 
 def prepare_model(task:str, training=False):
     task = str(task)

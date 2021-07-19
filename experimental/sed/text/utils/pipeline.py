@@ -11,13 +11,13 @@ from pathlib import Path
 from tqdm.notebook import tqdm
 from multiprocessing import Pool
 
-from text.data.structures import Document
-from text.data.postprocessing import AttractPreserve
-from text.data.datasets import lm_pad_collate, WordEmbeddingDataset
+from ..data.structures import Document
+from ..data.postprocessing import AttractPreserve
+from ..data.datasets import lm_pad_collate, WordEmbeddingDataset
 
-from text.networks.embeddings import WordEmbeddings
-from text.utils.models import prepare_model
-from text.utils.config import DataConfig, ModelsConfig, EmbeddingsConfig
+from ..networks.embeddings import WordEmbeddings
+from ..utils.models import prepare_model
+from ..utils.config import DataConfig, ModelsConfig, EmbeddingsConfig
 
 class Inference():
     def __init__(self, task=None):

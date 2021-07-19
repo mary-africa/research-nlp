@@ -12,13 +12,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from pathlib import Path
 from time import time
 
-from text.data.datasets import lm_pad_collate
-from text.data.vocab import retrieve_tokens
+from ..data.datasets import lm_pad_collate
+from ..data.vocab import retrieve_tokens
 
-from text.networks.highway import Highway
-from text.networks.attention import Encoder, EncoderLayer
-from text.networks.attention import MultiHeadedAttention, PositionwiseFeedForward, PositionalEncoding
-from text.utils.config import EmbeddingsConfig, ModelsConfig, DataConfig
+from .highway import Highway
+from .attention import Encoder, EncoderLayer, \
+     MultiHeadedAttention, PositionwiseFeedForward, PositionalEncoding
+
+from ..utils.config import EmbeddingsConfig, ModelsConfig, DataConfig
 
 class EmbeddingLayer(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, dropout, return_array, num_attn_layers=None, d_ff=None, hidden=None, out_c=None, token_vocab_size=None,

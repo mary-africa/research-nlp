@@ -1,6 +1,6 @@
 
 import torch
-from text.data.datasets import pad_collate, lm_pad_collate
+from ..data.datasets import pad_collate, lm_pad_collate
 
 class DataConfig():
     dataloader_params = dict(        
@@ -24,16 +24,16 @@ class ModelsConfig():
 
     #for the Language Model 
     lang_mod = True
-    morphs = './df_morphs.txt'
-    lm_train_text = './train.txt'
-    lm_val_text = './valid.txt'
+    morphs = './sed/df_morphs.txt'
+    lm_train_text = './sed/train.txt'
+    lm_val_text = './sed/valid.txt'
 
-    lm_token_path = './tokens/small-tkns.txt'
-    lm_enc_tok_path = "./tokens/small-enc-tkns.txt.npy"
+    lm_token_path = './sed/tokens/small-tkns.txt'
+    lm_enc_tok_path = "./sed/tokens/small-enc-tkns.txt.npy"
 
-    lm_weight_path = './embeddings/small-embeddings.pth'
-    lm_embed_path = './embeddings/small-embeddings.txt.npy'
-    lm_model_path = './models/6.9453_lm.pth'
+    lm_weight_path = './sed/embeddings/small-embeddings.pth'
+    lm_embed_path = './sed/embeddings/small-embeddings.txt.npy'
+    lm_model_path = './sed/models/6.9453_lm.pth'
     
     # Configurations
     # model_params = dict(

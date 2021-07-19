@@ -1,5 +1,5 @@
 import sys, re
-from text.utils.morphology import MorphologyAnalyzer
+from ..utils.morphology import MorphologyAnalyzer
 
 class Document():
     """

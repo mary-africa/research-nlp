@@ -8,8 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm.notebook import tqdm
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
-from text.data.preprocessing import MorphemeEncoder as Tokenizer
-from text.data.vocab import Vocab
+from .preprocessing import MorphemeEncoder as Tokenizer
+from .vocab import Vocab
 
 def pad_collate(batch, pretrained=False):
     if not pretrained:

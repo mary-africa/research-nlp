@@ -1,7 +1,7 @@
 import sys, re, json
 import numpy as np
 
-from text.utils.heuristic import SEDHeuristic
+from ..utils.heuristic import SEDHeuristic
 
 class MorphologyAnalyzer(SEDHeuristic):
     '''
