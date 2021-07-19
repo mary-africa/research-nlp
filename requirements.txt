@@ -17,5 +17,3 @@ tqdm
 sklearn
 streamlit==0.84.1
 torch==1.9.0+cpu
-
-streamlit>=0.84.1
