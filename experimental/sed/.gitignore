@@ -11,3 +11,6 @@ sed_workspace.code-workspace
 text/README.md
 emotions
 sw-clean.txt
+
+# Ignore created environment
+sed-venv
