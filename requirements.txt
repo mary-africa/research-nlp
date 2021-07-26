@@ -9,13 +9,12 @@ numpy>=1.17
 # mock==4.0.3
 
 # For research (to remove later)
-# jupyterlab==3.0.16
+jupyterlab==3.0.16
 
 # 
--f https://download.pytorch.org/whl/torch_stable.html
-tqdm
-sklearn
-streamlit==0.84.1
-torch==1.9.0+cpu
+# -f https://download.pytorch.org/whl/torch_stable.html
+# tqdm
+# sklearn
+# torch==1.9.0+cpua
 
-streamlit>=0.84.1
+# streamlit>=0.84.1 
