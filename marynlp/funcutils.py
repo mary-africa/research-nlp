@@ -1,6 +1,9 @@
 from collections.abc import Iterable, Callable
-from functools import wraps, partial
+from functools import wraps, partial as native_partial
 from typing import List, Any, Optional
+
+"""Outputting the parital limit"""
+partial = native_partial
 
 def _skipper_exec(out, executor: Callable, skip_rule: Optional[Callable] = None):
     """Skips execution depending on the rule"""
