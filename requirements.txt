@@ -1,7 +1,7 @@
 # core
-jax==0.2.16
-flax==0.3.4
-optax==0.0.9
+# jax==0.2.16
+# flax==0.3.4
+# optax==0.0.9
 numpy>=1.17
 
 # for TDD
