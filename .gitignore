@@ -140,5 +140,5 @@ cython_debug/
 # resources to test the code on.
 resources/
 
-# prevent dependencies
+# dependencies
 deps/

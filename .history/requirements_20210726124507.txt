@@ -1,0 +1,20 @@
+# core
+jax==0.2.16
+flax==0.3.4
+optax==0.0.9
+numpy>=1.17
+
+# for TDD
+# pytest==6.2.4
+# mock==4.0.3
+
+# For research (to remove later)
+jupyterlab==3.0.16
+
+# 
+# -f https://download.pytorch.org/whl/torch_stable.html
+# tqdm
+# sklearn
+# torch==1.9.0+cpu
+
+# streamlit>=0.84.1 
