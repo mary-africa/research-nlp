@@ -1,7 +1,7 @@
 from pathlib import Path
 from . import localize_google_cloud_file, local, unzip_file, google, download
 
-from log import logger as log
+from ..log import logger as log
 
 
 def file_from_google_temporary(cloud_file_blob_name: str, bucket: google.GCBucket):
