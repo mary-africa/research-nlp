@@ -12,7 +12,7 @@ class SEDHeuristic():
 
         Args:
 
-            wrodlist - list of words
+            wordlist - list of words
             threshold - minimum number of characters needed to appear in both strings for a valid pair
             min_word_len - minimum length of string to be considered valid for pairing
             size - maximum number of non-identical characters in strings for a valid pair

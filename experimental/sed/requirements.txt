@@ -1,7 +1,0 @@
-# core dependencies
-
-# for research stuff
-jupyterlab>=3.0.16
-
-# App related
-streamlit>=0.84.1
