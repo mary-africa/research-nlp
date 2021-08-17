@@ -15,5 +15,8 @@ numpy>=1.17
 -f https://download.pytorch.org/whl/torch_stable.html
 tqdm
 sklearn
-streamlit==0.84.1
+# streamlit==0.84.1
 torch==1.9.0+cpu
+
+overrides==6.1.0
+flair==0.5
