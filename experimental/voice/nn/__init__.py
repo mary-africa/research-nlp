@@ -1,10 +1,13 @@
 import torch.nn as nn
-from .utils import BidirectionalGRU, ResidualCNN
+from .utils import ResidualCNN, BidirectionalGRU
+
 
 class SpeechRecognitionModel(nn.Module):
     '''
     Pipeline for the entire encoder architecture
+
     '''
+
     def __init__(self, n_cnn_layers, n_rnn_layers, rnn_dim, n_class, n_feats, stride=2, dropout=0.1):
         super(SpeechRecognitionModel, self).__init__()
         n_feats = n_feats // 2
