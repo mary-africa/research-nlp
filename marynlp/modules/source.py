@@ -1,12 +1,5 @@
-from .. import funcutils as f
-
 from pathlib import Path
 from ..utils.storage import download
-
-# Including this hear alone makes it such that you must have 
-# flair to be able to use this model
-from flair.models import SequenceTagger, TextClassifier
-
 
 # Flair relatedel models
 FLAIR_TEXT_CLASSIFIERS = {
@@ -21,6 +14,11 @@ FLAIR_TEXT_CLASSIFIERS = {
 FLAIR_SEQUENCE_TAGGERS = {
     'early-alpha-tag-ner': ('flair/taggers/sw-ner-gen1f-base.zip', True),
     'early-alpha-tag-pos': ('flair/taggers/sw-pos-early-h256.zip', True)
+}
+
+FLAIR_EMBEDDINGS = {
+    # TODO: add a reader to include the references after opening the folder
+    'sw-early-uncased-forward': ('flair/language-model/sw-early-uncased-forward.zip', True),
 }
 
 
@@ -39,7 +37,3 @@ def get_model_from_google_bucket(src: str, flair_model_path_dict, bucket):
     
     # if not zipped
     return download.file_from_google_to_store(blob_name, bucket)
-
-# Build the sequence tagger
-build_sequence_tagger: SequenceTagger = f.apply(SequenceTagger.load)(f.partial(get_model_from_google_bucket, flair_model_path_dict=FLAIR_SEQUENCE_TAGGERS))
-build_text_classifier: TextClassifier = f.apply(TextClassifier.load)(f.partial(get_model_from_google_bucket, flair_model_path_dict=FLAIR_TEXT_CLASSIFIERS))
