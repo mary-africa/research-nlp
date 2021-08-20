@@ -1,5 +1,9 @@
+"""
+NOTE: This is all OLD things
+"""
+
 from .base import token, compoundToken
-        
+
 class subword(token):    
     def __repr__(self):
         return "sb'{}'".format(self.extra_repr())

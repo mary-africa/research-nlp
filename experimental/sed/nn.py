@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 
 from typing import Tuple, List, Union
+
 
 class SEDWordEmbeddingLayer(nn.Module):
     def __init__(self, 
@@ -130,10 +133,9 @@ class SEDWordEmbeddingLayer(nn.Module):
         return self.get_composition(emb_in, in_len, dim)
 
 
-
-class SEDLookupLayer(nn.Module):
+class SEDSequenceLayer(nn.Module):
     def __init__(self, word_count: int, embedding_dim: int, comp_fn: str = None, rnn_dim: int = 32):
-        super(SEDLookupLayer, self).__init__()
+        super(SEDSequenceLayer, self).__init__()
         self.comp_fn = comp_fn
         self.birnn = nn.GRU(
             input_size=embedding_dim, 
@@ -155,35 +157,29 @@ class SEDLookupLayer(nn.Module):
         output = self.linear(torch.mean(output, 1))  
         
         return self.classifier(output)
-        
+
+    def predict_proba(self, emb_in):
+        output = self.forward(emb_in)
+        return F.softmax(output, dim=1)
+    
+    def predict(self, emb_in):
+        out = self.predict_proba(emb_in)
+        return torch.argmax(out, dim=1) 
+
 class SEDLanguageModel(nn.Module):
     def __init__(self, 
-                 sed_word_embeddings_layer: SEDWordEmbeddingLayer,
+                 embeddings: torch.Tensor,
                  word_count: int, 
+                 comp_fn: str = None,
                  rnn_dim: int = 32):
         super(SEDLanguageModel, self).__init__()
-        self.swe_layer = sed_word_embeddings_layer
-        self.look_up = SEDLookupLayer(word_count, self.swe_layer.embedding_dim, self.swe_layer.comp_fn, rnn_dim)
-#         self.birnn = nn.GRU(
-#             input_size=self.swe.embedding_dim, 
-#             hidden_size=rnn_dim, 
-#             num_layers=1, 
-#             batch_first=True,
-#             bidirectional=True
-#         )
-#         self.linear = nn.Sequential(
-#             nn.Linear(rnn_dim*2, self.swe.embedding_dim), 
-#             nn.ReLU(),
-#             nn.Dropout(0.2),
-#             )
-#         self.classifier = nn.Linear(self.swe.embedding_dim, word_count)
+        self.embeddings = embeddings
+        self.look_up = SEDSequenceLayer(word_count, embeddings.shape[-1], comp_fn, rnn_dim)
 
-    def forward(self, inputs: List[Tuple[int]], input_len: List[int]):
-        emb_in = self.swe_layer(inputs, input_len)
-        
-        return self.look_up(emb_in.unsqueeze(dim=0))
-
-#         output,_ = self.birnn(emb_in) if self.swe.comp_fn is None else pad_packed_sequence(self.birnn(emb_in)[0], batch_first=True)
-#         output = self.linear(torch.mean(output, 1))  
-        
-#         return self.classifier(output)
+    def forward(self, padded_word_sequence: List[Tuple[int]]):
+        """
+        padded_word_sequence: BATCH FIRST
+        """
+        out = F.one_hot(padded_word_sequence).to(torch.float) # [batch, #words, #morphmets]
+        out = torch.matmul(out, self.embeddings)
+        return self.look_up(out)

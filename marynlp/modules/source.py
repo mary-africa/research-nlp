@@ -21,19 +21,34 @@ FLAIR_EMBEDDINGS = {
     'sw-early-uncased-forward': ('flair/language-model/sw-early-uncased-forward.zip', True),
 }
 
+from ..utils.storage import local
 
-def get_model_from_google_bucket(src: str, flair_model_path_dict, bucket):
+def save_model_from_google_bucket(blob_model_path, bucket, zipped: bool = False):
+    # if Path(blob_model_path).exists()
+    if zipped:
+        # downloads the model and unzip
+        return download.prepare_zipped_model_from_google(blob_model_path, bucket)
+
+    # path of the model from storage
+    model_in_store = local.get_path_from_store(blob_model_path)
+
+    # if not zipped
+    
+    # checks if exists
+    if Path(model_in_store).exists():
+        # doesn't exist, re download
+        return download.file_from_google(blob_model_path, bucket, save_to_path=model_in_store)
+
+    return str(model_in_store)
+
+
+def get_model_from_google_bucket(src: str, model_dict, bucket):
     """Gets the model"""
-    if src not in flair_model_path_dict:
+    if src not in model_dict:
         assert Path(src).exists(), "The model path '%s' doesn't exist" % src
         return src
     
     # download the model and provice it
-    blob_name, zipped = flair_model_path_dict[src]
-    
-    if zipped:
-        # downloads the model and unzip
-        return download.prepare_zipped_model_from_google(blob_name, bucket)
-    
-    # if not zipped
-    return download.file_from_google_to_store(blob_name, bucket)
+    blob_name, zipped = model_dict[src]
+
+    return save_model_from_google_bucket(blob_name, bucket, zipped)

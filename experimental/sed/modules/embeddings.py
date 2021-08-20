@@ -5,7 +5,7 @@ import torch
 from torch.nn.utils.rnn import pad_packed_sequence
 from torch.utils.data import DataLoader
 
-from .nn import SEDWordEmbeddingLayer
+from ..nn import SEDWordEmbeddingLayer
 from ..utils import morpheme_pad_collate, MorphemeDataset
 
 class SEDWordEmbeddings(object):
