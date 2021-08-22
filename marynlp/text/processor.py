@@ -41,14 +41,17 @@ class StackedDataTextTransformer(DataTextTransformer):
         return t_text
 
 # -----------------------------------------------------------
-
-
 from .data import token, Vocab
+from typing import Dict, Any, List, Optional, Tuple
+
+from itertools import chain
+
+# from collections import OrderedDict
 
 class Encoder(object):
-    def __init__(self, items: Iterable[str]):
-        items = tuple(items)
-        self._encode_map = dict(zip(items, range(len(items))))
+    def __init__(self, encode_map: Dict[str, Any]):
+        # You might want to consider using `OrderedDict` since dict doesn't guarantee the order
+        self._encode_map = encode_map
         self._decode_map = { v: k for k, v in self._encode_map.items()}
     
     def encode(self, item: str):
@@ -64,48 +67,72 @@ class Encoder(object):
         return self._decode_map[ix]
         
     def __len__(self):
-        return len(self._encode_map)
-    
-OOV_TOKEN = token('<UNK>')
+        return len(self._encode_map)    
 
-class TokenEncoder(Encoder):
-    def __init__(self, vocab: Vocab):
-        super().__init__(vocab.get_tokens())
+class BaseTokenEncoder(Encoder):
+    def __init__(self, items: Iterable[token]):
+        items = tuple(items) # converting to tuple
+        super().__init__(dict(zip(items, range(len(items)))))
+
+    def get_tokens(self):
+        """Get the tokens"""
+        return tuple(self._decode_map[ix] for ix in range(len(self)))
         
-#         self.oov = {} if oov is None else {it:len(self.items)+i for i,it in enumerate(oov) if it not in self.items}
-#         self.ix = len(self.oov)
-#         self.encode_unk = encode_unk
+    def _proper_repr(self, key_value: Tuple[str, Any]):
+        key, val = key_value
+        return f"{key}={val}"
+    
+    def extra_repr(self):
+        token_items = tuple(self._encode_map.items())
+        
+        if len(self) > 4:
+            return ", ".join(list(map(self._proper_repr, token_items[:2]))) + "..., " + self._proper_repr(token_items[-1])
+        
+        return ", ".join(list(map(self._proper_repr, token_items)))
+    
+    def __repr__(self):
+        return "Encoder(%s, l=%d)" % (self.extra_repr(), len(self))
+
+    @property
+    def size(self):
+        return len(self)
+
+
+class TokenEncoder(BaseTokenEncoder):
+    def __init__(self, vocab: Vocab, special_tokens: List[token] = None, unk_token_idx: Optional[int] = None):
+        self.special_tokens = [token('<UNK>')]
+        self._unk_token_idx = 0
+        
+        if special_tokens is not None:
+            self.special_tokens = special_tokens
+            self._unk_token_idx = unk_token_idx
+            
+        super().__init__(chain(self.special_tokens, vocab.get_tokens()))
+        self.unk_token = self.special_tokens[self._unk_token_idx]
+
     def encode(self, item: token):# , enc_unk=True):
         try:
             return super().encode(item)
         except KeyError:
-            return -1
-#         item = item[0] if isinstance(item, list) else item
-
-#         if not enc_unk or item in self.items:
-#             return int(self.items.index(item)) if item in self.items else int(len(self.items)) 
-
-#         if item in self.oov.keys():
-#             return self.oov[item]
-        
-#         if self.encode_unk:
-#             self.oov.update({item:int(len(self.items))+self.ix})
-#             self.ix+=1
-
-#             return self.oov[item]
-        
-#         return int(len(self.items))
-
-#     def encode_oov(self, oov):
-#         self.oov.update({it:len(self.items)+i for i,it in enumerate(oov) if it not in self.items})
-
+            # Return the token location for unknown token
+            return super().encode(self.unk_token)
 
     def decode(self, ix):
         try:
             return super().decode(ix)
         except ValueError:
-            return OOV_TOKEN
-#         if ix<len(self.items):
-#             return self.items[int(ix)]
+            return super().decode(self.unk_token)
+    
+    def __repr__(self):
+        return "TokenEncoder(%s, l=%d)" % (self.extra_repr(), len(self))
         
-#         return [(k,v) for k,v in self.oov.items() if v==ix][0][0]
+class PaddedTokenEncoder(TokenEncoder):
+    def __init__(self, vocab: Vocab):
+        super().__init__(
+            vocab, 
+            special_tokens=[
+                token('<PAD>'), token('<UNK>')
+            ],
+            unk_token_idx=1
+        )
+

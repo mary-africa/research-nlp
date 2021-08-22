@@ -169,17 +169,26 @@ class SEDSequenceLayer(nn.Module):
 class SEDLanguageModel(nn.Module):
     def __init__(self, 
                  embeddings: torch.Tensor,
-                 word_count: int, 
                  comp_fn: str = None,
                  rnn_dim: int = 32):
         super(SEDLanguageModel, self).__init__()
         self.embeddings = embeddings
-        self.look_up = SEDSequenceLayer(word_count, embeddings.shape[-1], comp_fn, rnn_dim)
+        self.num_classes = embeddings.shape[0]
+        self.look_up = SEDSequenceLayer(embeddings.shape[0], embeddings.shape[-1], comp_fn, rnn_dim)
 
     def forward(self, padded_word_sequence: List[Tuple[int]]):
         """
         padded_word_sequence: BATCH FIRST
         """
-        out = F.one_hot(padded_word_sequence).to(torch.float) # [batch, #words, #morphmets]
+        out = F.one_hot(padded_word_sequence, num_classes=self.num_classes).to(torch.float) # [batch, #words, #morphmets]
         out = torch.matmul(out, self.embeddings)
         return self.look_up(out)
+
+    def predict_proba(self, padded_word_sequence: List[Tuple[int]]):
+        output = self.forward(padded_word_sequence)
+        return F.softmax(output, dim=1)
+    
+    def predict(self, padded_word_sequence: List[Tuple[int]]):
+        out = self.predict_proba(padded_word_sequence)
+        return torch.argmax(out, dim=1) 
+
