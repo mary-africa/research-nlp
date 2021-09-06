@@ -1,4 +1,4 @@
-from .. import funcutils as f
+from ... import funcutils as f
 from ..source import get_model_from_google_bucket, FLAIR_TEXT_CLASSIFIERS, FLAIR_SEQUENCE_TAGGERS
 
 # Including this hear alone makes it such that you must have 

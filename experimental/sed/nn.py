@@ -154,8 +154,7 @@ class SEDSequenceLayer(nn.Module):
     def forward(self, emb_in):    
 #         output, _ = self.birnn(emb_in) if self.comp_fn is None else pad_packed_sequence(self.birnn(emb_in)[0], batch_first=True)
         output, _ = self.birnn(emb_in)
-        output = self.linear(torch.mean(output, 1))  
-        
+        output = self.linear(torch.mean(output, 1))
         return self.classifier(output)
 
     def predict_proba(self, emb_in):
