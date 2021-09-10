@@ -1,0 +1,502 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import copy
+
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
+
+from typing import Tuple, List, Union
+
+from .highway import Highway
+from .attention import Encoder, EncoderLayer, MultiHeadedAttention,\
+                                     PositionwiseFeedForward, PositionalEncoding
+
+
+class EmbeddingLayer(nn.Module):
+    def __init__(self, 
+                 token_vocab_size: int, 
+                 embedding_dim: int, 
+                 hidden_dim: int, 
+                 dropout: int = 0.4, 
+                 num_attn_layers=None, 
+                 d_ff=None, 
+                 hidden=None, 
+                 out_c=None,
+                 kernel=None,
+                 padding_idx: int = 0,
+                 composition_fn='rnn'):
+        super(EmbeddingLayer, self).__init__()
+        
+        self.comp_fn = composition_fn
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+
+        self.emb_mod = nn.Embedding(token_vocab_size, embedding_dim, padding_idx=padding_idx)
+        self.compose, self.comp_linear = self.select_comp(dropout, num_attn_layers, d_ff, hidden, out_c, kernel)
+    
+    def select_comp(self, dropout, num_attn_layers, d_ff, hidden, out_c, kernel):
+        """Helper to select composition function"""
+        compose = None
+        comp_linear = None
+        
+        if self.comp_fn == 'rnn':
+            compose = nn.GRU(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+            comp_linear = nn.Sequential(
+                nn.Linear(self.hidden_dim*2, self.embedding_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            )
+            
+        return compose, comp_linear
+
+    def padded_sum(self, data, input_len = None, dim=0):
+        """
+        summing over padded sequence data
+        Args:
+            data: of dim (batch, seq_len, hidden_size)
+            input_lens: Optional long tensor of dim (batch,) that represents the
+                original lengths without padding. Tokens past these lengths will not
+                be included in the sum.
+
+        Returns:
+            Tensor (batch, hidden_size)
+
+        """
+        if input_len is not None:
+            return torch.stack([
+                torch.sum(data[:, :input_len, :], dim=dim)
+            ])
+        else:
+            return torch.stack([torch.sum(data, dim=dim)])
+
+    def rnn_compose(self, emb_in):
+        """
+        RNN composition of morpheme vectors into word embeddings
+        """
+                           
+        return self.compose(emb_in)[0]
+    
+    def get_composition(self, emb_in, in_len, dim):
+        """
+        Helper function to get word embeddings from morpheme vectors. Uses additive function by default
+        if composition function is not specified
+        """
+        if self.comp_fn == 'rnn':
+            if len(in_len)>1 or (len(in_len)==1 and in_len[0] is not None):
+
+                emb_in = pack_padded_sequence(emb_in, in_len, batch_first=True, enforce_sorted=False)
+                rnn_out,_ = pad_packed_sequence(self.rnn_compose(emb_in), batch_first=True)
+
+            else:
+                rnn_out = self.rnn_compose(emb_in)[0].unsqueeze(0)
+
+            # if self.return_array:
+
+            #     return torch.mean(self.comp_linear(rnn_out),1).clone().detach().cpu().numpy()
+
+            return torch.mean(self.comp_linear(rnn_out),1).squeeze(0).clone().detach().cpu()
+
+        return self.padded_sum(emb_in, in_len, dim=dim)
+    
+    
+    def check_batched(self, inputs):
+        """
+        check whether data is passed in batches(for models like the language and sentiment analysis)
+        or as single inputs and get embeddings accordingly.
+
+        Args:
+            inputs - collection containing the label-encoded words as well as their corresponding original
+                     lengths if were padded
+
+        Returns:
+            tensor of the vector representation of the input sequence
+        """
+        emb_in = [self.forward(x_in, in_len) for x_in, in_len in zip(inputs[0], inputs[1])]
+
+        if self.comp_fn is not None:
+            emb_len = [torch.as_tensor(len(emb)) for emb in emb_in]
+            pad_in = pad_sequence(emb_in, batch_first=True)
+            packed_out = pack_padded_sequence(pad_in, emb_len, batch_first=True, enforce_sorted=False)
+            
+            return packed_out
+        
+        return torch.cat(emb_in, dim=0)
+
+    def forward(self, x_in, in_len, dim=1):
+        """
+        Get embeddings from morpheme vectors after passing label-encoded vectors through the embedding layer
+        Args:
+            x_in   - label-encoded vector inputs
+            in_len - original lengths of vectors if were padded, else is None
+
+        Returns:
+            vector representation (embeddings) of the text sequence 
+        """  
+#         x_in, in_len = self.check_input(x_in, in_len)
+        emb_in = torch.cat([torch.stack([self.emb_mod(x)]) for x in x_in])
+        
+        return self.get_composition(emb_in, in_len, dim)
+
+
+# [OBSELETE]
+class SEDWordEmbeddingLayer(nn.Module):
+    def __init__(self, 
+                 token_vocab_size: int, 
+                 embedding_dim: int, 
+                 hidden_dim: int, 
+                 dropout: int = 0.4, 
+                 num_attn_layers=None, 
+                 d_ff=None, 
+                 hidden=None, 
+                 out_c=None,
+                 kernel=None,
+                 padding_idx: int = 0,
+                 composition_fn='rnn'):
+        super(SEDWordEmbeddingLayer, self).__init__()
+        
+        self.comp_fn = composition_fn
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+
+        self.emb_mod = nn.Embedding(token_vocab_size, embedding_dim, padding_idx=padding_idx)
+        self.compose, self.comp_linear = self.select_comp(dropout, num_attn_layers, d_ff, hidden, out_c, kernel)
+    
+    def select_comp(self, dropout, num_attn_layers, d_ff, hidden, out_c, kernel):
+        """Helper to select composition function"""
+        compose = None
+        comp_linear = None
+        
+        if self.comp_fn == 'rnn':
+            compose = nn.GRU(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+            comp_linear = nn.Sequential(
+                nn.Linear(self.hidden_dim*2, self.embedding_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            )
+            
+        return compose, comp_linear
+
+    def padded_sum(self, data, input_len = None, dim=0):
+        """
+        summing over padded sequence data
+        Args:
+            data: of dim (batch, seq_len, hidden_size)
+            input_lens: Optional long tensor of dim (batch,) that represents the
+                original lengths without padding. Tokens past these lengths will not
+                be included in the sum.
+
+        Returns:
+            Tensor (batch, hidden_size)
+
+        """
+        if input_len is not None:
+            return torch.stack([
+                torch.sum(data[:, :input_len, :], dim=dim)
+            ])
+        else:
+            return torch.stack([torch.sum(data, dim=dim)])
+
+    def rnn_compose(self, emb_in):
+        """
+        RNN composition of morpheme vectors into word embeddings
+        """
+                           
+        return self.compose(emb_in)[0]
+    
+    def get_composition(self, emb_in, in_len, dim):
+        """
+        Helper function to get word embeddings from morpheme vectors. Uses additive function by default
+        if composition function is not specified
+        """
+        if self.comp_fn == 'rnn':
+            if len(in_len)>1 or (len(in_len)==1 and in_len[0] is not None):
+
+                emb_in = pack_padded_sequence(emb_in, in_len, batch_first=True, enforce_sorted=False)
+                rnn_out,_ = pad_packed_sequence(self.rnn_compose(emb_in), batch_first=True)
+
+            else:
+                rnn_out = self.rnn_compose(emb_in)[0].unsqueeze(0)
+
+            # if self.return_array:
+
+            #     return torch.mean(self.comp_linear(rnn_out),1).clone().detach().cpu().numpy()
+
+            return torch.mean(self.comp_linear(rnn_out),1).squeeze(0).clone().detach().cpu()
+
+        return self.padded_sum(emb_in, in_len, dim=dim)
+    
+    
+    def check_batched(self, inputs):
+        """
+        check whether data is passed in batches(for models like the language and sentiment analysis)
+        or as single inputs and get embeddings accordingly.
+
+        Args:
+            inputs - collection containing the label-encoded words as well as their corresponding original
+                     lengths if were padded
+
+        Returns:
+            tensor of the vector representation of the input sequence
+        """
+        emb_in = [self.forward(x_in, in_len) for x_in, in_len in zip(inputs[0], inputs[1])]
+
+        if self.comp_fn is not None:
+            emb_len = [torch.as_tensor(len(emb)) for emb in emb_in]
+            pad_in = pad_sequence(emb_in, batch_first=True)
+            packed_out = pack_padded_sequence(pad_in, emb_len, batch_first=True, enforce_sorted=False)
+            
+            return packed_out
+        
+        return torch.cat(emb_in, dim=0)
+
+    def forward(self, x_in, in_len, dim=1):
+        """
+        Get embeddings from morpheme vectors after passing label-encoded vectors through the embedding layer
+        Args:
+            x_in   - label-encoded vector inputs
+            in_len - original lengths of vectors if were padded, else is None
+
+        Returns:
+            vector representation (embeddings) of the text sequence 
+        """  
+#         x_in, in_len = self.check_input(x_in, in_len)
+        emb_in = torch.cat([torch.stack([self.emb_mod(x)]) for x in x_in])
+        
+        return self.get_composition(emb_in, in_len, dim)
+
+
+# [OBSELETE]
+class SEDSequenceLayer(nn.Module):
+    def __init__(self, word_count: int, embedding_dim: int, comp_fn: str = None, rnn_dim: int = 32):
+        super(SEDSequenceLayer, self).__init__()
+        self.comp_fn = comp_fn
+        self.birnn = nn.GRU(
+            input_size=embedding_dim, 
+            hidden_size=rnn_dim, 
+            num_layers=1, 
+            batch_first=True,
+            bidirectional=True
+        )
+        self.linear = nn.Sequential(
+            nn.Linear(rnn_dim*2, embedding_dim), 
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            )
+        self.classifier = nn.Linear(embedding_dim, word_count)
+
+    def forward(self, emb_in):    
+#         output, _ = self.birnn(emb_in) if self.comp_fn is None else pad_packed_sequence(self.birnn(emb_in)[0], batch_first=True)
+        output, _ = self.birnn(emb_in)
+        output = self.linear(torch.mean(output, 1))
+        return self.classifier(output)
+
+    def predict_proba(self, emb_in):
+        output = self.forward(emb_in)
+        return F.softmax(output, dim=1)
+    
+    def predict(self, emb_in):
+        out = self.predict_proba(emb_in)
+        return torch.argmax(out, dim=1) 
+
+# [OBSELETE]
+class SEDLanguageModel(nn.Module):
+    def __init__(self, 
+                 embeddings: torch.Tensor,
+                 comp_fn: str = None,
+                 rnn_dim: int = 32):
+        super(SEDLanguageModel, self).__init__()
+        self.embeddings = embeddings
+        self.num_classes = embeddings.shape[0]
+        self.look_up = SEDSequenceLayer(embeddings.shape[0], embeddings.shape[-1], comp_fn, rnn_dim)
+
+    def forward(self, padded_word_sequence: List[Tuple[int]]):
+        """
+        padded_word_sequence: BATCH FIRST
+        """
+        out = F.one_hot(padded_word_sequence, num_classes=self.num_classes).to(torch.float) # [batch, #words, #morphmets]
+        out = torch.matmul(out, self.embeddings)
+        return self.look_up(out)
+
+    def predict_proba(self, padded_word_sequence: List[Tuple[int]]):
+        output = self.forward(padded_word_sequence)
+        return F.softmax(output, dim=1)
+    
+    def predict(self, padded_word_sequence: List[Tuple[int]]):
+        out = self.predict_proba(padded_word_sequence)
+        return torch.argmax(out, dim=1) 
+
+
+
+# [Alternative/Deprecated]
+class Alt_EmbeddingLayer(nn.Module):
+    def __init__(self, 
+                embedding_dim, 
+                hidden_dim, 
+                dropout, 
+                return_array, 
+                device,
+                num_attn_layers=None, 
+                d_ff=None, 
+                hidden=None, 
+                out_c=None, 
+                token_vocab_size=None,
+                kernel=None, 
+                embed_path=None, 
+                max_len=None, 
+                composition_fn='non'):
+
+        super(EmbeddingLayer, self).__init__()
+        self.device=device
+
+        self.comp_fn = composition_fn
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.max_len = max_len
+        self.return_array = return_array
+        
+        self.emb_mod = nn.Embedding(token_vocab_size, embedding_dim, padding_idx=0)
+        self.select_comp(dropout, num_attn_layers, d_ff, hidden, out_c, kernel)
+
+    def select_comp(self, dropout, num_attn_layers, d_ff, hidden, out_c, kernel):
+        """Helper to select composition function"""
+        if self.comp_fn == 'rnn':
+            self.compose = nn.GRU(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+            self.comp_linear = nn.Sequential(
+                nn.Linear(self.hidden_dim*2, self.embedding_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+                )
+
+        elif self.comp_fn == 'attn':
+            c = copy.deepcopy
+
+            attn = MultiHeadedAttention(hidden, self.hidden_dim)
+            ff = PositionwiseFeedForward(self.hidden_dim, d_ff, dropout)
+            position = PositionalEncoding(self.hidden_dim, dropout)
+            
+            self.attn = Encoder(EncoderLayer(self.hidden_dim, c(attn), c(ff), dropout), num_attn_layers)
+
+            self.compose = nn.GRU(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+            self.comp_linear = nn.Sequential(
+                nn.Linear(self.hidden_dim*2, self.embedding_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout)
+            )
+                
+        elif self.comp_fn == 'cnn':
+
+            self.cnn = nn.ModuleList([nn.Conv1d(in_channels=self.max_len, out_channels=out_c, kernel_size=k) for k in range(1,kernel+1)])
+            self.rnn = nn.GRU(input_size=out_c, hidden_size=self.embedding_dim, num_layers=1, batch_first=True, bidirectional=True)
+            self.highway = Highway(self.out_c, 3, f=F.relu)
+
+            self.linear = nn.Sequential(
+                nn.Linear(self.embedding_dim*2, 256), 
+                nn.ReLU(),
+                nn.Dropout(0.4)
+                )
+        else:
+            self.compose = None
+
+
+    def padded_sum(self, data, input_len = None, dim=0):
+        """
+        summing over padded sequence data
+        Args:
+            data: of dim (batch, seq_len, hidden_size)
+            input_lens: Optional long tensor of dim (batch,) that represents the
+                original lengths without padding. Tokens past these lengths will not
+                be included in the sum.
+        Returns:
+            Tensor (batch, hidden_size)
+        """
+        if input_len is not None:
+            return torch.stack([
+                torch.sum(data[:, :input_len, :], dim=dim)
+            ])
+        else:
+            return torch.stack([torch.sum(data, dim=dim)])
+
+    def rnn_compose(self, emb_in):
+        """
+        RNN composition of morpheme vectors into word embeddings
+        """
+                           
+        return self.compose(emb_in)[0]
+        
+    def attn_compose(self, emb_in):
+        """
+        Composition of morpheme vectors into word embeddings using attention model
+        """      
+        return self.rnn_compose([self.attn(emb_in[0], None)], None)
+
+    def cnn_compose(self, emb_in):
+        """
+        CNN composition of morphemes into word embeddings
+        """
+        assert self.max_len is not None, 'please specify the maximum length of words in vocabulary'
+        
+        return torch.cat([torch.max(torch.tanh(self.conv(emb_in)), 2)[0] for self.conv in self.cnn])
+
+    def get_composition(self, emb_in, in_len, dim):
+        """
+        Helper function to get word embeddings from morpheme vectors. Uses additive function by default
+        if composition function is not specified
+        """
+        if self.comp_fn is not None:
+            if self.comp_fn == 'rnn':
+                if len(in_len)>1 or (len(in_len)==1 and in_len[0] is not None):
+                    
+                    emb_in = pack_padded_sequence(emb_in, in_len, batch_first=True, enforce_sorted=False)
+                    rnn_out,_ = pad_packed_sequence(self.rnn_compose(emb_in), batch_first=True)
+
+                else:
+                    rnn_out = self.rnn_compose(emb_in)[0].unsqueeze(0)
+
+                # if self.return_array:
+                    
+                #     return torch.mean(self.comp_linear(rnn_out),1).clone().detach().cpu().numpy()
+                
+                return torch.mean(self.comp_linear(rnn_out),1).squeeze(0).clone().detach().cpu()
+
+            elif self.comp_fn == 'attn':
+                return self.attn_compose(emb_in)
+
+            elif self.comp_fn == 'cnn':
+                # emb_in = [torch.stack(emb_in)]
+                if self.return_array:
+                    return self.cnn_compose(emb_in).clone().detach().cpu().numpy()
+                
+                out = self.cnn_compose(emb_in)
+                out = self.highway(out)
+                
+                output,_ = self.birnn(out)
+                return self.linear(output)
+
+        return self.padded_sum(emb_in, in_len, dim=dim)
+
+    def check_input(self, x_in, in_len):
+        """
+        Helper function to ensure inputs are tensors and in the appropriate device
+        """
+        if not all(torch.is_tensor(x) for x in x_in):
+            x_in = [torch.as_tensor(x).to(self.device).long() for x in x_in]
+
+        if not all(torch.is_tensor(il) for il in in_len):
+            in_len = [torch.as_tensor(il).to(self.device).long().reshape(1,) if il is not None else il for il in in_len]
+       
+        return x_in, in_len
+
+    def forward(self, x_in, in_len, dim=1):
+        """
+        Get embeddings from morpheme vectors after passing label-encoded vectors through the embedding layer
+        Args:
+            x_in   - label-encoded vector inputs
+            in_len - original lengths of vectors if were padded, else is None
+        Returns:
+            vector representation (embeddings) of the text sequence 
+        """  
+        x_in, in_len = self.check_input(x_in, in_len)
+        emb_in = torch.cat([torch.stack([self.emb_mod(x)]) for x in x_in])
+        
+        return self.get_composition(emb_in, in_len, dim)
+

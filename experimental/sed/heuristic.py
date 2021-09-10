@@ -231,7 +231,7 @@ class SEDHeuristic():
         Returns:
             Dictionary of twins, siblings, orphans, and associated cost
         '''
-        alignments ={}
+        alignments = {}
         
         twins = list(self.get_twins(pair).values())
         s_rems = [re.sub(r'|'.join(map(re.escape, twins)), '', pair[0]), re.sub(r'|'.join(map(re.escape, twins)), '', pair[1])]
