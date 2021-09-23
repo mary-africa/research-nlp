@@ -9,7 +9,7 @@ numpy>=1.17
 # mock==4.0.3
 
 # For research (to remove later)
-jupyterlab==3.0.16
+# jupyterlab==3.0.16
 
 # 
 -f https://download.pytorch.org/whl/torch_stable.html
@@ -20,3 +20,6 @@ torch==1.9.0+cpu
 
 overrides==6.1.0
 flair==0.5
+
+python-Levenshtein==0.12.2
+

@@ -37,9 +37,6 @@ class CompositionalEmbeddings(nn.Module):
     def forward(self, t_morphs_of_word: torch.Tensor):
         return self.embed(t_morphs_of_word)
 
-    def update_weight_from_path(self, sed_embeddings_pth: str):
-        self.compose_embeddings.load_state_dict(torch.load(Path(sed_embeddings_pth), map_location=self.device))
-
     def embed_morphemes(self, morphemes_word_list: Iterable[List[int]]) -> torch.Tensor:
         tok, tok_len = morphemes_word_list
        
@@ -62,13 +59,11 @@ class CompositionalEmbeddings(nn.Module):
         embeddings = np.concatenate(_tok_emb)
         return embeddings
 
+    def update_weight_from_path(self, sed_embeddings_pth: str):
+        self.compose_embeddings.load_state_dict(torch.load(str(sed_embeddings_pth), map_location=self.device))
 
 class CompositionalLanguageModel(nn.Module):
-    def __init__(self, 
-                morphology_embedder: CompositionalEmbeddings, 
-                word_count: int, 
-                rnn_dim, 
-                use_cuda: bool = True,):
+    def __init__(self, morphology_embedder, word_count: int, rnn_dim):
         super(CompositionalLanguageModel, self).__init__()
         
         self.morph_embedder = morphology_embedder
@@ -84,23 +79,14 @@ class CompositionalLanguageModel(nn.Module):
         )
 
         self.classifier = nn.Linear(self.embedding_dim, word_count)
-        
-        # device to train
-        self.device = torch.device("cuda:0" if use_cuda else "cpu")
+
 
     def forward(self, tensor_words):
-        emb_in = self.morph_embedder(tensor_words).unsqueeze(dim=0).unsqueeze(dim=0)
+        emb_in = self.morph_embedder.get_embeddings(tensor_words)
+
         output, _ = self.birnn(emb_in)
         output = self.linear(torch.mean(output, 1))
-        return self.classifier(output)[0]
-
-    def predict_proba(self, emb_in):
-        output = self.forward(emb_in)
-        return F.softmax(output, dim=1)
-    
-    def predict(self, emb_in):
-        out = self.predict_proba(emb_in)
-        return torch.argmax(out, dim=1)
+        return self.classifier(output)
 
     def update_weight_from_path(self, lang_model_pth: str):
-        self.load_state_dict(torch.load(Path(lang_model_pth), map_location=self.device))
+        self.load_state_dict(torch.load(str(lang_model_pth), map_location=self.device))

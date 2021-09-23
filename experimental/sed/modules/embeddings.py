@@ -10,6 +10,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_se
 from ..nn import SEDWordEmbeddingLayer, EmbeddingLayer
 from ..utils import morpheme_pad_collate, MorphemeDataset
 
+from pathlib import Path
 
 
 # [OBSELETE]
